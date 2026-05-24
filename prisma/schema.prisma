@@ -1,0 +1,543 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  SUPER_ADMIN
+  ORG_ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum OrgPlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum Recurrence {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  ONCE
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  WAITLISTED
+  CHECKED_IN
+  NO_SHOW
+}
+
+enum MembershipStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  PAUSED
+  TRIALING
+}
+
+enum PlanInterval {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  ONE_TIME
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum FunnelStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RetreatBookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  CLASS_CANCELLED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  MEMBERSHIP_EXPIRING
+  NEW_COMMUNITY_POST
+  WAITLIST_PROMOTED
+  RETREAT_REMINDER
+  GENERAL
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model Organization {
+  id               String   @id @default(uuid())
+  name             String
+  slug             String   @unique
+  logo             String?
+  email            String
+  phone            String?
+  address          String?
+  timezone         String   @default("Europe/Madrid")
+  settings         Json     @default("{}")
+  stripeAccountId  String?
+  plan             OrgPlan  @default(FREE)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  members          OrganizationMember[]
+  classes          Class[]
+  schedules        Schedule[]
+  classSessions    ClassSession[]
+  bookings         Booking[]
+  rooms            Room[]
+  membershipPlans  MembershipPlan[]
+  memberships      Membership[]
+  payments         Payment[]
+  communityPosts   CommunityPost[]
+  retreats         Retreat[]
+  funnels          Funnel[]
+  funnelLeads      FunnelLead[]
+  crmContacts      CrmContact[]
+
+  @@map("organizations")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  name            String
+  avatar          String?
+  phone           String?
+  emailVerified   DateTime?
+  hashedPassword  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  memberships      OrganizationMember[]
+  bookings         Booking[]
+  userMemberships  Membership[]
+  payments         Payment[]
+  communityPosts   CommunityPost[]
+  communityComments CommunityComment[]
+  retreatBookings  RetreatBooking[]
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
+  teacherSchedules  Schedule[] @relation("TeacherSchedules")
+  accounts         Account[]
+  sessions         Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model OrganizationMember {
+  id              String   @id @default(uuid())
+  userId          String
+  organizationId  String
+  role            Role     @default(STUDENT)
+  isActive        Boolean  @default(true)
+  joinedAt        DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("organization_members")
+}
+
+model Class {
+  id              String   @id @default(uuid())
+  organizationId  String
+  name            String
+  description     String?
+  duration        Int
+  maxCapacity     Int
+  color           String?
+  isOnline        Boolean  @default(false)
+  meetingUrl      String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schedules    Schedule[]
+
+  @@map("classes")
+}
+
+model Room {
+  id              String   @id @default(uuid())
+  organizationId  String
+  name            String
+  capacity        Int
+  isActive        Boolean  @default(true)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schedules    Schedule[]
+
+  @@map("rooms")
+}
+
+model Schedule {
+  id              String     @id @default(uuid())
+  organizationId  String
+  classId         String
+  teacherId       String
+  roomId          String?
+  dayOfWeek       Int
+  startTime       String
+  endTime         String
+  recurrence      Recurrence @default(WEEKLY)
+  startDate       DateTime
+  endDate         DateTime?
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  class        Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher      User          @relation("TeacherSchedules", fields: [teacherId], references: [id])
+  room         Room?         @relation(fields: [roomId], references: [id])
+  sessions     ClassSession[]
+
+  @@map("schedules")
+}
+
+model ClassSession {
+  id              String        @id @default(uuid())
+  organizationId  String
+  scheduleId      String
+  date            DateTime
+  status          SessionStatus @default(SCHEDULED)
+  currentCapacity Int           @default(0)
+  notes           String?
+  createdAt       DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schedule     Schedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+
+  @@map("class_sessions")
+}
+
+model Booking {
+  id               String        @id @default(uuid())
+  organizationId   String
+  userId           String
+  sessionId        String
+  status           BookingStatus @default(CONFIRMED)
+  checkedInAt      DateTime?
+  cancelledAt      DateTime?
+  waitlistPosition Int?
+  createdAt        DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session      ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sessionId])
+  @@map("bookings")
+}
+
+model MembershipPlan {
+  id              String       @id @default(uuid())
+  organizationId  String
+  name            String
+  description     String?
+  price           Int
+  currency        String       @default("EUR")
+  interval        PlanInterval @default(MONTHLY)
+  classesPerMonth Int?
+  features        Json         @default("[]")
+  stripePriceId   String?
+  paypalPlanId    String?
+  isActive        Boolean      @default(true)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+
+  @@map("membership_plans")
+}
+
+model Membership {
+  id                    String           @id @default(uuid())
+  organizationId        String
+  userId                String
+  planId                String
+  status                MembershipStatus @default(ACTIVE)
+  stripeSubscriptionId  String?
+  paypalSubscriptionId  String?
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  cancelledAt           DateTime?
+  classesUsedThisMonth  Int              @default(0)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan         MembershipPlan @relation(fields: [planId], references: [id])
+  payments     Payment[]
+
+  @@map("memberships")
+}
+
+model Payment {
+  id                String          @id @default(uuid())
+  organizationId    String
+  userId            String
+  membershipId      String?
+  retreatBookingId  String?
+  amount            Int
+  currency          String          @default("EUR")
+  provider          PaymentProvider
+  providerPaymentId String?
+  status            PaymentStatus   @default(PENDING)
+  description       String?
+  metadata          Json?
+  createdAt         DateTime        @default(now())
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership     Membership?    @relation(fields: [membershipId], references: [id])
+  retreatBooking RetreatBooking? @relation(fields: [retreatBookingId], references: [id])
+
+  @@map("payments")
+}
+
+model CommunityPost {
+  id              String    @id @default(uuid())
+  organizationId  String
+  authorId        String
+  content         String
+  mediaUrls       Json?
+  isPinned        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments     CommunityComment[]
+
+  @@map("community_posts")
+}
+
+model CommunityComment {
+  id        String    @id @default(uuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  post   CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("community_comments")
+}
+
+model Retreat {
+  id              String   @id @default(uuid())
+  organizationId  String
+  name            String
+  description     String
+  location        String
+  startDate       DateTime
+  endDate         DateTime
+  price           Int
+  currency        String   @default("EUR")
+  maxParticipants Int
+  imageUrls       Json?
+  isPublished     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookings     RetreatBooking[]
+
+  @@map("retreats")
+}
+
+model RetreatBooking {
+  id              String              @id @default(uuid())
+  organizationId  String
+  retreatId       String
+  userId          String
+  status          RetreatBookingStatus @default(PENDING)
+  roomPreference  String?
+  notes           String?
+  createdAt       DateTime            @default(now())
+
+  retreat  Retreat   @relation(fields: [retreatId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@unique([retreatId, userId])
+  @@map("retreat_bookings")
+}
+
+model Funnel {
+  id              String       @id @default(uuid())
+  organizationId  String
+  name            String
+  slug            String
+  blocks          Json         @default("[]")
+  settings        Json         @default("{}")
+  status          FunnelStatus @default(DRAFT)
+  visits          Int          @default(0)
+  conversions     Int          @default(0)
+  publishedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leads        FunnelLead[]
+
+  @@unique([organizationId, slug])
+  @@map("funnels")
+}
+
+model FunnelLead {
+  id              String   @id @default(uuid())
+  organizationId  String
+  funnelId        String
+  email           String
+  name            String?
+  phone           String?
+  data            Json?
+  source          String?
+  createdAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  funnel       Funnel       @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+
+  @@map("funnel_leads")
+}
+
+model CrmContact {
+  id              String    @id @default(uuid())
+  organizationId  String
+  userId          String?
+  email           String
+  name            String
+  phone           String?
+  tags            Json      @default("[]")
+  notes           String?
+  lastContactedAt DateTime?
+  source          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, email])
+  @@map("crm_contacts")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  url       String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model PushSubscription {
+  id       String @id @default(uuid())
+  userId   String
+  endpoint String
+  p256dh   String
+  auth     String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@map("push_subscriptions")
+}

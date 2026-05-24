@@ -1,0 +1,20 @@
+services:
+  postgres:
+    extends:
+      file: docker-compose.yml
+      service: postgres
+
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+
+  minio:
+    extends:
+      file: docker-compose.yml
+      service: minio
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
