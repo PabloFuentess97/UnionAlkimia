@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Union Alkimia
 
-## Getting Started
+Plataforma SaaS multi-tenant para gestion de estudios de yoga y wellness.
 
-First, run the development server:
+## Tech Stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript (strict)
+- **Database:** PostgreSQL 16 + Prisma 7
+- **Auth:** Auth.js v5 (NextAuth)
+- **Payments:** Stripe
+- **Cache:** Redis 7
+- **Storage:** MinIO (S3-compatible)
+- **Email:** Resend + React Email
+- **Testing:** Vitest + Playwright
+
+## Desarrollo Local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# 1. Levantar servicios
+docker compose up -d
+
+# 2. Configurar variables
+cp .env.example .env.local
+
+# 3. Instalar dependencias
+pnpm install
+
+# 4. Crear tablas
+pnpm db:push
+
+# 5. Seed inicial
+pnpm db:seed
+
+# 6. Iniciar dev server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploy en Coolify
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Opcion 1: Docker Compose (recomendado)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. En Coolify, crear nuevo recurso > **Docker Compose**
+2. Conectar el repositorio Git: `https://github.com/PabloFuentess97/UnionAlkimia.git`
+3. Seleccionar archivo: `docker-compose.prod.yml`
+4. Configurar las variables de entorno en Coolify (ver seccion abajo)
+5. Deploy
 
-## Learn More
+### Opcion 2: Dockerfile (solo la app)
 
-To learn more about Next.js, take a look at the following resources:
+Si ya tienes PostgreSQL, Redis y MinIO en Coolify como servicios separados:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Crear nuevo recurso > **Dockerfile**
+2. Conectar el repositorio Git
+3. Configurar variables de entorno apuntando a tus servicios existentes
+4. Health check path: `/api/health`
+5. Puerto: `3000`
+6. Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Variables de Entorno (Coolify)
 
-## Deploy on Vercel
+```env
+# === REQUERIDAS ===
+DATABASE_URL=postgresql://postgres:TU_PASSWORD@postgres:5432/union_alkimia
+REDIS_URL=redis://redis:6379
+NEXTAUTH_URL=https://tu-dominio.com
+NEXTAUTH_SECRET=genera-con-openssl-rand-base64-32
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# === STRIPE ===
+STRIPE_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# === EMAIL ===
+RESEND_API_KEY=re_...
+FROM_EMAIL=Union Alkimia <noreply@tu-dominio.com>
+
+# === STORAGE ===
+MINIO_ENDPOINT=minio
+MINIO_PORT=9000
+MINIO_ACCESS_KEY=tu-access-key
+MINIO_SECRET_KEY=tu-secret-key
+MINIO_BUCKET=union-alkimia
+
+# === PWA / PUSH ===
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=genera-con-web-push-generate-vapid-keys
+VAPID_PRIVATE_KEY=genera-con-web-push-generate-vapid-keys
+VAPID_EMAIL=admin@tu-dominio.com
+
+# === CRON ===
+CRON_SECRET=un-token-secreto-para-cron-jobs
+
+# === DATABASE (para docker-compose) ===
+POSTGRES_DB=union_alkimia
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=una-password-segura
+```
+
+### Post-Deploy
+
+1. Configurar dominio y SSL en Coolify (automatico con Let's Encrypt)
+2. Crear webhook en Stripe apuntando a `https://tu-dominio.com/api/webhooks/stripe`
+3. Configurar dominio en Resend para deliverability
+4. Generar claves VAPID: `npx web-push generate-vapid-keys`
+
+## Scripts
+
+| Comando | Descripcion |
+|---------|-------------|
+| `pnpm dev` | Servidor de desarrollo |
+| `pnpm build` | Build de produccion |
+| `pnpm test` | Tests unitarios (watch) |
+| `pnpm test:run` | Tests unitarios (CI) |
+| `pnpm test:e2e` | Tests E2E con Playwright |
+| `pnpm db:push` | Sincronizar schema con DB |
+| `pnpm db:seed` | Cargar datos iniciales |
+| `pnpm db:studio` | Abrir Prisma Studio |
