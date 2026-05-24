@@ -1,6 +1,8 @@
 services:
   app:
-    image: ghcr.io/pablofuentess97/unionalkimia:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: ua-app
     restart: unless-stopped
     ports:
