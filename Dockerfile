@@ -18,7 +18,7 @@ ENV NEXTAUTH_SECRET="build-time-secret-not-used-in-runtime"
 ENV REDIS_URL="redis://localhost:6379"
 
 RUN pnpm prisma generate
-RUN pnpm build
+RUN npx next build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
