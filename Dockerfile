@@ -10,7 +10,13 @@ RUN npm install -g pnpm@10
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ENV NEXTAUTH_URL="http://localhost:3000"
+ENV NEXTAUTH_SECRET="build-time-secret-not-used-in-runtime"
+ENV REDIS_URL="redis://localhost:6379"
+
 RUN pnpm prisma generate
 RUN pnpm build
 
