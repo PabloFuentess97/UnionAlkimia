@@ -12,13 +12,14 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 ENV NEXTAUTH_URL="http://localhost:3000"
 ENV NEXTAUTH_SECRET="build-time-secret-not-used-in-runtime"
 ENV REDIS_URL="redis://localhost:6379"
 
 RUN pnpm prisma generate
-RUN npx next build
+RUN pnpm exec next build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
