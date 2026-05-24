@@ -3,6 +3,8 @@ import { headers } from "next/headers"
 import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/db"
 
+export const dynamic = "force-dynamic"
+
 export async function POST(req: Request) {
   const body = await req.text()
   const headersList = await headers()

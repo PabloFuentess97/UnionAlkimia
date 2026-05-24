@@ -2,11 +2,13 @@ import webpush from "web-push"
 import { prisma } from "@/lib/db"
 import type { PushSubscription } from "@prisma/client"
 
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL || "admin@unionalkimia.com"}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
-  process.env.VAPID_PRIVATE_KEY || ""
-)
+if (process.env.VAPID_PRIVATE_KEY && process.env.VAPID_PRIVATE_KEY !== "placeholder") {
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL || "admin@unionalkimia.com"}`,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+    process.env.VAPID_PRIVATE_KEY || ""
+  )
+}
 
 export async function sendPushToUser(
   userId: string,

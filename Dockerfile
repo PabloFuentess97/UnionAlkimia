@@ -1,14 +1,11 @@
-FROM node:20-alpine AS deps
+FROM node:20-alpine AS builder
 RUN npm install -g pnpm@10
 WORKDIR /app
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY prisma ./prisma/
 RUN pnpm install --frozen-lockfile
 
-FROM node:20-alpine AS builder
-RUN npm install -g pnpm@10
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -17,9 +14,13 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 ENV NEXTAUTH_URL="http://localhost:3000"
 ENV NEXTAUTH_SECRET="build-time-secret-not-used-in-runtime"
 ENV REDIS_URL="redis://localhost:6379"
+ENV STRIPE_SECRET_KEY="sk_test_placeholder_for_build"
+ENV RESEND_API_KEY="re_placeholder_for_build"
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY="placeholder"
+ENV VAPID_PRIVATE_KEY="placeholder"
 
 RUN pnpm prisma generate
-RUN pnpm exec next build
+RUN pnpm exec next build 2>&1 || exit 1
 
 FROM node:20-alpine AS runner
 WORKDIR /app
