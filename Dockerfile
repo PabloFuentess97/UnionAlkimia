@@ -20,9 +20,10 @@ ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY="placeholder"
 ENV VAPID_PRIVATE_KEY="placeholder"
 
 RUN pnpm prisma generate
-RUN pnpm exec next build 2>&1 || exit 1
+RUN pnpm exec next build
 
 FROM node:20-alpine AS runner
+RUN npm install -g pnpm@10
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -30,13 +31,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/next.config.ts ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 USER nextjs
 EXPOSE 3000
@@ -45,4 +47,4 @@ ENV PORT=3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
+CMD ["pnpm", "start"]
