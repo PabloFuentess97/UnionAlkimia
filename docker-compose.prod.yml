@@ -6,19 +6,10 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.ua-app-http.rule=Host(`${COOLIFY_FQDN:-union.wyweb.net}`)
-      - traefik.http.routers.ua-app-http.entrypoints=http
-      - traefik.http.routers.ua-app-https.rule=Host(`${COOLIFY_FQDN:-union.wyweb.net}`)
-      - traefik.http.routers.ua-app-https.entrypoints=https
-      - traefik.http.routers.ua-app-https.tls=true
-      - traefik.http.routers.ua-app-https.tls.certresolver=letsencrypt
-      - traefik.http.services.ua-app.loadbalancer.server.port=3000
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-union_alkimia}
       - REDIS_URL=redis://redis:6379
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://union.wyweb.net}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
@@ -43,7 +34,7 @@ services:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
-      start_period: 60s
+      start_period: 90s
       retries: 3
 
   postgres:
