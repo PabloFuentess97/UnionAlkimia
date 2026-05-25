@@ -36,9 +36,6 @@ services:
       timeout: 10s
       start_period: 40s
       retries: 3
-    networks:
-      - internal
-      - coolify
 
   postgres:
     image: postgres:16-alpine
@@ -54,8 +51,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - internal
 
   redis:
     image: redis:7-alpine
@@ -68,8 +63,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - internal
 
   minio:
     image: minio/minio
@@ -85,16 +78,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - internal
 
 volumes:
   pgdata:
   redisdata:
   miniodata:
-
-networks:
-  internal:
-    driver: bridge
-  coolify:
-    external: true
