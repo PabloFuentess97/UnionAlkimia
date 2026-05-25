@@ -38,6 +38,7 @@ services:
       retries: 3
     networks:
       - internal
+      - coolify
 
   postgres:
     image: postgres:16-alpine
@@ -95,3 +96,5 @@ volumes:
 networks:
   internal:
     driver: bridge
+  coolify:
+    external: true
