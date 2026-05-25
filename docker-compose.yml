@@ -25,14 +25,6 @@ services:
       timeout: 10s
       start_period: 90s
       retries: 3
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.union-app-secure.rule=Host(`union.wyweb.net`)"
-      - "traefik.http.routers.union-app-secure.entrypoints=websecure"
-      - "traefik.http.routers.union-app-secure.tls.certResolver=letsencrypt"
-      - "traefik.http.services.union-app.loadbalancer.server.port=3000"
-      - "traefik.http.routers.union-app.rule=Host(`union.wyweb.net`)"
-      - "traefik.http.routers.union-app.entrypoints=web"
     networks:
       - dokploy-network
 
