@@ -1,28 +1,62 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    expose:
+      - "3000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-union_alkimia}
+      - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - AUTH_TRUST_HOST=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.union-app-secure.rule=Host(`union.wyweb.net`)"
+      - "traefik.http.routers.union-app-secure.entrypoints=websecure"
+      - "traefik.http.routers.union-app-secure.tls.certResolver=letsencrypt"
+      - "traefik.http.services.union-app.loadbalancer.server.port=3000"
+      - "traefik.http.routers.union-app.rule=Host(`union.wyweb.net`)"
+      - "traefik.http.routers.union-app.entrypoints=web"
+    networks:
+      - dokploy-network
+
   postgres:
     image: postgres:16-alpine
-    container_name: ua-postgres
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
+    restart: always
     environment:
-      POSTGRES_DB: union_alkimia
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB=${POSTGRES_DB:-union_alkimia}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - dokploy-network
 
   redis:
     image: redis:7-alpine
-    container_name: ua-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
+    restart: always
+    command: redis-server --appendonly yes
     volumes:
       - redisdata:/data
     healthcheck:
@@ -30,17 +64,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - dokploy-network
 
   minio:
     image: minio/minio
-    container_name: ua-minio
-    restart: unless-stopped
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    restart: always
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
     command: server /data --console-address ":9001"
     volumes:
       - miniodata:/data
@@ -49,8 +81,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - dokploy-network
 
 volumes:
   pgdata:
   redisdata:
   miniodata:
+
+networks:
+  dokploy-network:
+    external: true
