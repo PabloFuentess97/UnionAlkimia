@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: union-alkimia-app
     restart: always
     expose:
       - "3000"
